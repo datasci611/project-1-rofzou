@@ -1,0 +1,77 @@
+---
+  title: "BIOS 611 Project 1"
+  author: "Rodger Zou"
+  date: "`r format(Sys.time(), '%m/%d/%Y')`"
+  output: html_document
+---
+
+```{r echo=FALSE, message = FALSE}
+library(tidyverse)
+library(knitr)
+```
+# Data Set 1: ChickWeight
+
+For the first dataset, I'm going to use ChickWeight, and compare the weights of chicks on certain diets. The data itself consists of the measurements of weights at certain time intervals of 50 chicks. However, plotting every chick barely left enough room for any information on their individual diets and made the comparisons of the diets too difficult. I had to mutate the data in the first place in order to get a better overall picture and clean up the graph to make it more communicable.
+In the second graph, after mutation I was able to compare the average weight of all chicks of that particular diet at time t. This makes a much more useable graph that seems to indicate that diet 3 produces the greatest average weight at the final time, but diet 4 barely wins for most of the time until the end. Also, I added geom_smooth in order to visualize the deviation and was surprised to find it to be not very high. In addition, I summarized the data at the final time and ordered the top 10 heaviest chicks. Here we see that diet 3 is a clear winner, given that half of the top ten spots are occupied by chicks of diet 3. Interestingly, there are missing chicks at the final time, so not all survived.
+```{r}
+OrderedChicks <- ChickWeight %>%
+  group_by(Chick)
+ggplot(OrderedChicks, mapping = aes(x = Time, y = weight, color = Chick, shape = Diet)) +geom_line() #not very useful
+
+ChickWeightAvgs <- ChickWeight %>%
+  group_by(Diet, Time)
+summarise(ChickWeightAvgs, Meanweight = mean(weight)) %>%
+ggplot(ChickWeightAvgs, mapping = aes(x = Time, y = Meanweight, group = Diet, color = Diet)) +geom_line() +geom_smooth() + labs(y ='Average Weight')
+
+Thicchick <- ChickWeight %>% filter(Time==21) %>% group_by(Chick) %>% arrange(desc(weight)) %>% as.tibble()
+head(Thicchick, 10) %>% kable(align = c("c", "c"))
+```
+
+# Data Set 2: Titanic
+
+For this dataset, I'm using Titanic and comparing the amount of deaths across all the classes aboard the ship. The data itself contains the frequencies of survival of several different classes of people, divided by both gender and age. For the first project I decided to be simple and compare the survival of the classes for now, though you could easily make more complicated or more graphs that compare gender and age as well. From the graph, it looks like the crew had the most deaths, folowed by the classes in order. Interestingly, in terms of absolute value, 3rd class had more survivals than 2nd class. 
+
+One interesting question I had was whether or not children and women survived more than men, given the adage of "children and women first". I decided to produce results for that but not in a graph. Using a mutation, I produced a proportion of survival/death occurence based on the total population of specific age/sex combinations. In those results, it looks like only 20% of adult men did not survive while 74% and 62% of adult and child females did survive, respectively. Only 45% of child males survived as well. One further analysis that could be done would be to filter out the crew, given that the crew was probably predominately male. In addition, one could try breaking down this analysis as well by class.
+
+```{r}
+Titanict <- as.tibble(Titanic) %>% group_by(Class, Survived) %>% summarise(Total = sum(n))
+ggplot(Titanict, mapping = aes(x= Survived, y= Total, fill=as.factor(Class))) +   
+  geom_bar(position = "dodge", stat="identity") + labs(fill='Class')
+
+Titenic <- as.tibble(Titanic) %>% group_by(Age, Sex, Survived) %>% summarise(Total = sum(n)) %>% mutate(Poptotal = sum(Total)) %>% mutate('Proportion' = Total/Poptotal)
+kable(Titenic, align = c("c", "c"))
+
+```
+
+# Data Set 3: warpbreaks
+For this dataset, the data was comparing the amount of breaks that occur at each combination of tension and wool type. I wanted to make an easy way to visualize this at all combinations (6), so I decided on a tile graph with easy to read colors. In order to do this I had to do a group_by mutation so that the data could be parsed correctly. In addition, I decided on a color that was easy to compare the delineations with, as I do not think it's very easy with blue. As we can see, polar opposite amounts of breaks occur in low tension, wool type A vs high tension, wool type B. Everything else is inbetween, but for the other categories wool type A has less breaks than wool type B in total. 
+
+However, a more useful comparison could also be the average amount as opposed to the total amount. I decided to do that mutation, and the data reveals a similar conclusion, only that the B types on average have more breaks with the exception of the two polar opposites.
+
+```{r}
+Warps <- warpbreaks %>% group_by(wool, tension) %>% summarise(Total=sum(breaks))
+  ggplot(Warps, mapping = aes(x = wool, y = tension, fill = Total)) + geom_tile() + scale_fill_gradient(low = "yellow", high = "red") + labs(x= 'Wool Type', y= 'Tension Strength', fill = 'TotalNumber of Breaks')
+kable(Warps, align = c("c", "c"))
+Warpavg <- warpbreaks %>% group_by(wool, tension) %>% summarise(Avg=mean(breaks))
+kable(Warpavg, align = c("c", "c"))
+
+
+```
+
+#Data Set 4: esoph
+
+For this dataset, we are looking at esophogeal cancer with respect to alcohol and tobacco consumption. I decided to summarise and mutate the data first in regards to age group and frequency and then plot that to see if age group was a good predictor of cancer frequency. I did this by creating a new variable of frequency, which divides the total number of cases vs control cases. The figure reveals that higher proportions of diseased individuals occur starting from age 45 onwards, peaking at age 65-74. It is interesting to note that there is a smaller proportion at 75+ but there are also less samples at that age. 
+
+I then decided to filter the data and look only at the top 3 age groups. Then, ordering by the proportion, I wanted to spot trends in alchohol or tobacco consumption purely from the table. However, this was not as informative as I'd hoped, so I decided to summarise further and collapse the age group variable so that the total proportion of cancer cases could be compared solely across alcohol and tobacco consumption, and then visualise that using a heatmap. That was more informative; from this summary we can see that there is an increasing proportion of cancer given greater consumption of both alcohol and tobacco. The lowest incidence of cancer occurred in the lowest corner of consumption, and diagonally from there is an increasing proportion of cancer, which was interesting. One further look that could be done is somehow look at the two factors (alcohol vs tobacco consumption) separately and see if one has a greater effect on cancer proportion over the other.
+
+
+```{r}
+esophsum <- esoph %>% group_by(agegp) %>% mutate(tot_n = sum(ncases), tot_c = sum(ncontrols)+sum(ncases), freq = tot_n/tot_c)
+ggplot(data = esophsum, mapping=(aes(x=agegp, y=freq,fill=agegp))) + geom_bar(stat="identity", position = "dodge") + labs(x='Age Group', y= 'Disease Proportion', fill = 'Age Group')
+esophfilter<-esophsum %>% filter(agegp == '55-64'| agegp == '65-74'|agegp =='75+') %>% mutate(Factor_Freq = ncases/(ncases+ncontrols)) %>% arrange(desc(Factor_Freq))
+head(esophfilter, 10) %>% kable(align = c("c", "c"))
+esophonemore <- esophfilter %>% select(agegp, alcgp, tobgp, ncases, ncontrols) %>% group_by(alcgp, tobgp) %>% summarise(sumcases = sum(ncases), sumcontrols = sum(ncontrols)) %>% mutate(freq_sum=(sumcases/(sumcases+sumcontrols)))
+ggplot(esophonemore, mapping = aes(x=tobgp, y=alcgp, fill=freq_sum)) + geom_tile() + scale_fill_gradient(low = "yellow", high = "red") + labs(x='Tobacco Consumption (g/day)', y='Alcohol Consumption (g/day)', fill ='Cancer Proportion')
+kable(esophonemore, align = c("c", "c"))
+
+```
