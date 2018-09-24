@@ -54,8 +54,6 @@ Warps <- warpbreaks %>% group_by(wool, tension) %>% summarise(Total=sum(breaks))
 kable(Warps, align = c("c", "c"))
 Warpavg <- warpbreaks %>% group_by(wool, tension) %>% summarise(Avg=mean(breaks))
 kable(Warpavg, align = c("c", "c"))
-
-
 ```
 
 #Data Set 4: esoph
